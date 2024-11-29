@@ -50,41 +50,27 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	app.render(w, r, http.StatusOK, "view.tmpl", data)
 }
 
-// 	// Initialize a slice containing the paths to the view.tmpl file,
-// 	// plus the base layout and navigation partial that we made earlier.
-// 	files := []string{
-// 		"./ui/html/base.tmpl",
-// 		"./ui/html/partials/nav.tmpl",
-// 		"./ui/html/pages/view.tmpl",
-// 	}
-
-// 	ts, err := template.ParseFiles(files...)
-// 	if err != nil {
-// 		app.serverError(w, r, err)
-// 		return
-// 	}
-
-// 	data := templateData{
-// 		Snippet: snippet,
-// 	}
-
-// 	err = ts.ExecuteTemplate(w, "base", data)
-// 	if err != nil {
-// 		app.serverError(w, r, err)
-// 	}
-
-// 	// fmt.Fprintf(w, "%+v", snippet)
-// }
-
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Display a form for creating a new snippet..."))
+	data := app.newTemplateData(r)
+
+	app.render(w, r, http.StatusOK, "create.tmpl", data)
 }
 
 func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	// dummy values to be removed later
-	title := "0 snail"
-	content := "0 snail\nClimbn Mount Fuji,\nBut slowl, slowly!\n\n- Kobayashi Issa"
-	expires := 7
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	title := r.PostForm.Get("title")
+	content := r.PostForm.Get("content")
+
+	expires, err := strconv.Atoi(r.PostForm.Get("expires"))
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
 
 	// Pass the data to SnippetModel.Insert() method
 	id, err := app.snippets.Insert(title, content, expires)
@@ -95,7 +81,4 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 
 	// Return user to the relevant page for the snippet
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
-	// Not sure if these are staying?
-	// w.WriteHeader(http.StatusCreated)
-	// w.Write([]byte("Save a new snippet..."))
 }
