@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"runtime/debug"
+	"time"
 )
 
 // The serverError helper writes a log entry at Error level (including the request
@@ -56,11 +57,10 @@ func (app *application) render(w http.ResponseWriter, r *http.Request, status in
 	// Write the contents of the buffer to the http.ResponseWriter by
 	// passing the http.ResponseWriter to a function that takes an io.Writer
 	buf.WriteTo(w)
+}
 
-	// Execute the template set and write the response body. If there is an error
-	// it will call the serverError() helper
-	// err := ts.ExecuteTemplate(w, "base", data)
-	// if err != nil {
-	// 	app.serverError(w, r, err)
-	// }
+func (app *application) newTemplateData(r *http.Request) templateData {
+	return templateData{
+		CurrentYear: time.Now().Year(),
+	}
 }
