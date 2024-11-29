@@ -1,52 +1,118 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"html/template"
-	"log"
 	"net/http"
 	"strconv"
+
+	"snippetbox.andrew.dugal/internal/models"
 )
 
-func home(w http.ResponseWriter, r *http.Request) {
+func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Server", "Go")
 
-	files := []string{
-		"./ui/html/base.tmpl",
-		"./ui/html/pages/home.tmpl",
-		"./ui/html/partials/nav.tmpl",
-	}
-
-	ts, err := template.ParseFiles(files...)
+	snippets, err := app.snippets.Latest()
 	if err != nil {
-		log.Print(err.Error())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		app.serverError(w, r, err)
 		return
 	}
 
-	err = ts.ExecuteTemplate(w, "base", nil)
-	if err != nil {
-		log.Print(err.Error())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
+	app.render(w, r, http.StatusOK, "home.tmpl", templateData{
+		Snippets: snippets,
+	})
 }
 
-func snippetView(w http.ResponseWriter, r *http.Request) {
+// files := []string{
+// 	"./ui/html/base.tmpl",
+// 	"./ui/html/pages/home.tmpl",
+// 	"./ui/html/partials/nav.tmpl",
+// }
+
+// ts, err := template.ParseFiles(files...)
+// if err != nil {
+// 	app.serverError(w, r, err)
+// 	return
+// }
+
+// data := templateData{
+// 	Snippets: snippets,
+// }
+
+// err = ts.ExecuteTemplate(w, "base", data)
+// if err != nil {
+// 	app.serverError(w, r, err)
+// }
+//}
+
+func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil || id < 1 {
 		http.NotFound(w, r)
 		return
 	}
 
-	fmt.Fprintf(w, "Display a specific snippet with ID %d...", id)
+	snippet, err := app.snippets.Get(id)
+	if err != nil {
+		if errors.Is(err, models.ErrNoRecord) {
+			http.NotFound(w, r)
+		} else {
+			app.serverError(w, r, err)
+		}
+		return
+	}
 
+	app.render(w, r, http.StatusOK, "view.tmpl", templateData{
+		Snippet: snippet,
+	})
 }
 
-func snippetCreate(w http.ResponseWriter, r *http.Request) {
+// 	// Initialize a slice containing the paths to the view.tmpl file,
+// 	// plus the base layout and navigation partial that we made earlier.
+// 	files := []string{
+// 		"./ui/html/base.tmpl",
+// 		"./ui/html/partials/nav.tmpl",
+// 		"./ui/html/pages/view.tmpl",
+// 	}
+
+// 	ts, err := template.ParseFiles(files...)
+// 	if err != nil {
+// 		app.serverError(w, r, err)
+// 		return
+// 	}
+
+// 	data := templateData{
+// 		Snippet: snippet,
+// 	}
+
+// 	err = ts.ExecuteTemplate(w, "base", data)
+// 	if err != nil {
+// 		app.serverError(w, r, err)
+// 	}
+
+// 	// fmt.Fprintf(w, "%+v", snippet)
+// }
+
+func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Display a form for creating a new snippet..."))
 }
 
-func snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Save a new snippet..."))
+func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
+	// dummy values to be removed later
+	title := "0 snail"
+	content := "0 snail\nClimbn Mount Fuji,\nBut slowl, slowly!\n\n- Kobayashi Issa"
+	expires := 7
+
+	// Pass the data to SnippetModel.Insert() method
+	id, err := app.snippets.Insert(title, content, expires)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	// Return user to the relevant page for the snippet
+	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
+	// Not sure if these are staying?
+	// w.WriteHeader(http.StatusCreated)
+	// w.Write([]byte("Save a new snippet..."))
 }
